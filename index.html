@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snake Dash</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="hud" aria-label="Game stats">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <h1>Snake Dash</h1>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <span>Level</span>
+          <strong id="levelText">1</strong>
+        </div>
+        <div class="stat">
+          <span>Score</span>
+          <strong id="scoreText">0</strong>
+        </div>
+        <div class="stat wide">
+          <span>Next Level</span>
+          <strong id="progressText">0 / 5</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="game-wrap">
+      <canvas id="gameCanvas" width="960" height="620" aria-label="Snake Dash game area"></canvas>
+
+      <div class="overlay show" id="startScreen">
+        <div class="panel">
+          <p class="eyebrow">Fast cube arcade</p>
+          <h2>Eat safe cubes. Dodge stronger ones.</h2>
+          <p>Move with WASD or arrow keys. Green and yellow cubes are edible. Red cubes end the run.</p>
+          <button id="startButton" type="button">Start Game</button>
+        </div>
+      </div>
+
+      <div class="overlay" id="gameOverScreen">
+        <div class="panel">
+          <p class="eyebrow">Game over</p>
+          <h2 id="finalScoreText">Score 0</h2>
+          <p id="finalLevelText">You reached Level 1.</p>
+          <button id="restartButton" type="button">Restart</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="legend" aria-label="Cube difficulty legend">
+      <div><span class="key safe"></span>Lower level</div>
+      <div><span class="key equal"></span>Same level</div>
+      <div><span class="key danger"></span>Too strong</div>
+    </section>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>
