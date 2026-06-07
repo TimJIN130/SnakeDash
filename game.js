@@ -16,8 +16,15 @@ const bossStatus = document.getElementById("bossStatus");
 const pauseScreen = document.getElementById("pauseScreen");
 
 const bossImage = typeof Image !== "undefined" ? new Image() : null;
+let bossImageReady = false;
 if (bossImage) {
-  bossImage.src = "assets/boss.png";
+  bossImage.onload = () => {
+    bossImageReady = true;
+  };
+  bossImage.onerror = () => {
+    bossImageReady = false;
+  };
+  bossImage.src = "./assets/boss-game.png";
 }
 
 const WORLD = { width: canvas.width, height: canvas.height };
@@ -600,11 +607,14 @@ function drawBoss() {
   ctx.fillStyle = "#11141d";
   ctx.fillRect(-size / 2, -size / 2, size, size);
 
-  if (bossImage && bossImage.complete) {
-    ctx.drawImage(bossImage, -size / 2, -size / 2, size, size);
+  if (bossImageReady && bossImage && bossImage.naturalWidth > 0) {
+    try {
+      ctx.drawImage(bossImage, -size / 2, -size / 2, size, size);
+    } catch (error) {
+      drawFallbackBoss(size);
+    }
   } else {
-    ctx.fillStyle = "#7e3ff2";
-    ctx.fillRect(-size / 2, -size / 2, size, size);
+    drawFallbackBoss(size);
   }
 
   ctx.strokeStyle = "#f3ddff";
@@ -618,6 +628,18 @@ function drawBoss() {
   ctx.lineWidth = 3;
   ctx.strokeRect(x - 10, y - 10, size + 20, size + 20);
   ctx.restore();
+}
+
+function drawFallbackBoss(size) {
+  ctx.fillStyle = "#7e3ff2";
+  ctx.fillRect(-size / 2, -size / 2, size, size);
+  ctx.fillStyle = "#f7ecff";
+  ctx.font = "900 26px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("BOSS", 0, -3);
+  ctx.font = "800 15px system-ui, sans-serif";
+  ctx.fillText("LV 25", 0, 23);
 }
 
 function drawBossSign(sign) {
