@@ -19,7 +19,7 @@ const PLAYER_SIZE = 34;
 const CUBE_SIZE = 32;
 const BASE_TARGET = 5;
 const HIGH_SCORE_KEY = "snakeDashHighScores";
-const BOSS_START_LEVEL = 15;
+const BOSS_START_LEVEL = 10;
 const BOSS_DEFEAT_LEVEL = 25;
 const BOSS_SIGN_SIZE = 30;
 
@@ -270,7 +270,7 @@ function startBackgroundMusic() {
   if (!audioContext || musicTimer) return;
 
   musicGain = audioContext.createGain();
-  musicGain.gain.setValueAtTime(muted ? 0 : 0.035, audioContext.currentTime);
+  musicGain.gain.setValueAtTime(muted ? 0 : 0.065, audioContext.currentTime);
   musicGain.connect(audioContext.destination);
 
   const bassNotes = [130.81, 130.81, 196, 164.81, 130.81, 220, 196, 164.81];
@@ -300,7 +300,7 @@ function toggleMute() {
   muteButton.setAttribute("aria-pressed", String(muted));
 
   if (musicGain && audioContext) {
-    musicGain.gain.setTargetAtTime(muted ? 0 : 0.035, audioContext.currentTime, 0.03);
+    musicGain.gain.setTargetAtTime(muted ? 0 : 0.065, audioContext.currentTime, 0.03);
   }
 }
 
