@@ -10,25 +10,42 @@ const finalScoreText = document.getElementById("finalScoreText");
 const finalLevelText = document.getElementById("finalLevelText");
 const startButton = document.getElementById("startButton");
 const restartButton = document.getElementById("restartButton");
+const muteButton = document.getElementById("muteButton");
+const highScoreList = document.getElementById("highScoreList");
+const bossStatus = document.getElementById("bossStatus");
 
 const WORLD = { width: canvas.width, height: canvas.height };
 const PLAYER_SIZE = 34;
 const CUBE_SIZE = 32;
 const BASE_TARGET = 5;
+const HIGH_SCORE_KEY = "snakeDashHighScores";
+const BOSS_START_LEVEL = 15;
+const BOSS_DEFEAT_LEVEL = 25;
+const BOSS_SIGN_SIZE = 30;
 
 const keys = new Set();
 let audioContext;
+let musicGain;
+let musicTimer;
+let musicStep = 0;
+let muted = false;
 let player;
 let cubes;
+let boss;
+let bossSigns;
 let particles;
 let score;
 let eatenThisLevel;
 let nextLevelTarget;
 let elapsed;
 let spawnTimer;
+let bossShootTimer;
+let bossMessageTimer;
 let lastFrame;
 let running = false;
 let gameOver = false;
+let bossActive = false;
+let bossDefeated = false;
 
 function resetGame() {
   player = {
@@ -39,14 +56,21 @@ function resetGame() {
     pulse: 0
   };
   cubes = [];
+  boss = null;
+  bossSigns = [];
   particles = [];
   score = 0;
   eatenThisLevel = 0;
   nextLevelTarget = BASE_TARGET;
   elapsed = 0;
   spawnTimer = 0;
+  bossShootTimer = 0;
+  bossMessageTimer = 0;
   lastFrame = performance.now();
   gameOver = false;
+  bossActive = false;
+  bossDefeated = false;
+  bossStatus.classList.remove("show");
   updateHud();
 
   for (let i = 0; i < 14; i += 1) {
@@ -56,6 +80,7 @@ function resetGame() {
 
 function startGame() {
   ensureAudio();
+  startBackgroundMusic();
   resetGame();
   running = true;
   startScreen.classList.remove("show");
@@ -66,6 +91,10 @@ function startGame() {
 function endGame() {
   running = false;
   gameOver = true;
+  bossStatus.classList.remove("show");
+  stopBackgroundMusic();
+  saveHighScores(score);
+  renderHighScores();
   playTone(90, 0.35, "sawtooth", 0.08);
   finalScoreText.textContent = `Score ${score}`;
   finalLevelText.textContent = `You reached Level ${player.level}.`;
@@ -108,9 +137,26 @@ function update(dt) {
     cube.y = clamp(cube.y, CUBE_SIZE / 2, WORLD.height - CUBE_SIZE / 2);
   });
 
-  if (spawnTimer > Math.max(0.38, 1.1 - player.level * 0.05 - elapsed * 0.006)) {
+  if (!bossActive && !bossDefeated && player.level >= BOSS_START_LEVEL) {
+    startBossBattle();
+  }
+
+  if (bossActive) {
+    updateBossBehaviour(dt);
+  }
+
+  if (bossMessageTimer > 0) {
+    bossMessageTimer = Math.max(0, bossMessageTimer - dt);
+  }
+
+  const spawnInterval = bossActive
+    ? Math.max(1.15, 1.85 - elapsed * 0.002)
+    : Math.max(0.38, 1.1 - player.level * 0.05 - elapsed * 0.006);
+  const maxCubes = bossActive ? 12 : 24 + player.level * 2;
+
+  if (spawnTimer > spawnInterval) {
     spawnTimer = 0;
-    if (cubes.length < 24 + player.level * 2) spawnCube();
+    if (cubes.length < maxCubes) spawnCube();
   }
 
   checkCollisions();
@@ -142,9 +188,13 @@ function checkCollisions() {
 
       eatCube(cube);
       cubes.splice(i, 1);
-      spawnCube();
+      if (!bossActive || Math.random() < 0.45) {
+        spawnCube();
+      }
     }
   }
+
+  checkBossSignCollisions();
 }
 
 // Level progression ramps the target slightly so each level takes a little more focus.
@@ -157,14 +207,18 @@ function eatCube(cube) {
   burst(cube.x, cube.y, cube.level > player.level ? "#fb5a5f" : cube.level === player.level ? "#f8cf4b" : "#36d982");
 
   if (eatenThisLevel >= nextLevelTarget) {
-    player.level += 1;
+    changePlayerLevel(1);
     eatenThisLevel = 0;
-    nextLevelTarget = BASE_TARGET + Math.floor(player.level * 1.6);
     playTone(780, 0.16, "square", 0.04);
     burst(player.x, player.y, "#6bb8ff", 26);
   }
 
   updateHud();
+}
+
+function changePlayerLevel(amount) {
+  player.level = Math.max(1, player.level + amount);
+  nextLevelTarget = BASE_TARGET + Math.floor(player.level * 1.6);
 }
 
 function spawnCube() {
@@ -212,6 +266,201 @@ function updateParticles(dt) {
   });
 }
 
+function startBackgroundMusic() {
+  if (!audioContext || musicTimer) return;
+
+  musicGain = audioContext.createGain();
+  musicGain.gain.setValueAtTime(muted ? 0 : 0.035, audioContext.currentTime);
+  musicGain.connect(audioContext.destination);
+
+  const bassNotes = [130.81, 130.81, 196, 164.81, 130.81, 220, 196, 164.81];
+  musicTimer = window.setInterval(() => {
+    const note = bassNotes[musicStep % bassNotes.length];
+    playMusicNote(note, 0.11, "square", musicStep % 4 === 0 ? 0.85 : 0.55);
+    if (musicStep % 2 === 1) playMusicNote(note * 2, 0.07, "triangle", 0.28);
+    musicStep += 1;
+  }, 140);
+}
+
+function stopBackgroundMusic() {
+  if (musicTimer) {
+    window.clearInterval(musicTimer);
+    musicTimer = null;
+  }
+
+  if (musicGain) {
+    musicGain.disconnect();
+    musicGain = null;
+  }
+}
+
+function toggleMute() {
+  muted = !muted;
+  muteButton.textContent = muted ? "Unmute" : "Mute";
+  muteButton.setAttribute("aria-pressed", String(muted));
+
+  if (musicGain && audioContext) {
+    musicGain.gain.setTargetAtTime(muted ? 0 : 0.035, audioContext.currentTime, 0.03);
+  }
+}
+
+function playMusicNote(frequency, duration, type, volumeScale) {
+  if (!audioContext || !musicGain) return;
+
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  const now = audioContext.currentTime;
+
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, now);
+  oscillator.frequency.exponentialRampToValueAtTime(frequency * 0.98, now + duration);
+  gain.gain.setValueAtTime(0.09 * volumeScale, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+  oscillator.connect(gain);
+  gain.connect(musicGain);
+  oscillator.start(now);
+  oscillator.stop(now + duration);
+}
+
+function getHighScores() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(HIGH_SCORE_KEY)) || [];
+    return saved.filter(Number.isFinite).slice(0, 3);
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveHighScores(newScore) {
+  const highScores = [...getHighScores(), newScore]
+    .sort((a, b) => b - a)
+    .slice(0, 3);
+
+  try {
+    localStorage.setItem(HIGH_SCORE_KEY, JSON.stringify(highScores));
+  } catch (error) {
+    // Private browsing or locked-down storage should not break a run.
+  }
+}
+
+function renderHighScores() {
+  const highScores = getHighScores();
+  highScoreList.innerHTML = "";
+
+  for (let i = 0; i < 3; i += 1) {
+    const item = document.createElement("li");
+    item.textContent = highScores[i] || 0;
+    highScoreList.appendChild(item);
+  }
+}
+
+function startBossBattle() {
+  bossActive = true;
+  boss = {
+    x: WORLD.width / 2,
+    y: WORLD.height / 2,
+    size: 96,
+    pulse: 0
+  };
+  bossSigns = [];
+  bossShootTimer = 0.55;
+  bossStatus.classList.add("show");
+  playTone(150, 0.22, "sawtooth", 0.07);
+  burst(boss.x, boss.y, "#b576ff", 34);
+}
+
+// The boss is a pressure phase: signs drift out from center, plus signs help more often
+// than minus signs hurt, and normal cube spawning slows down so dodging stays readable.
+function updateBossBehaviour(dt) {
+  boss.pulse += dt * 5;
+  bossShootTimer -= dt;
+
+  if (bossShootTimer <= 0) {
+    spawnBossSign();
+    bossShootTimer = random(0.62, 1.05);
+  }
+
+  bossSigns = bossSigns.filter((sign) => {
+    sign.x += sign.vx * dt;
+    sign.y += sign.vy * dt;
+    sign.life -= dt;
+    return sign.life > 0 && sign.x > -50 && sign.x < WORLD.width + 50 && sign.y > -50 && sign.y < WORLD.height + 50;
+  });
+
+  if (player.level >= BOSS_DEFEAT_LEVEL) {
+    endBossBattle();
+  }
+}
+
+function spawnBossSign() {
+  const isPositive = Math.random() < 0.64;
+  const angle = random(0, Math.PI * 2);
+  const distance = random(110, 250);
+  let x = boss.x + Math.cos(angle) * distance;
+  let y = boss.y + Math.sin(angle) * distance;
+
+  x = clamp(x, 48, WORLD.width - 48);
+  y = clamp(y, 48, WORLD.height - 48);
+
+  for (let attempts = 0; attempts < 16 && Math.hypot(player.x - x, player.y - y) < 120; attempts += 1) {
+    const retryAngle = random(0, Math.PI * 2);
+    x = clamp(boss.x + Math.cos(retryAngle) * random(140, 280), 48, WORLD.width - 48);
+    y = clamp(boss.y + Math.sin(retryAngle) * random(140, 280), 48, WORLD.height - 48);
+  }
+
+  const driftAngle = Math.atan2(y - boss.y, x - boss.x) + random(-0.55, 0.55);
+  const speed = random(34, 82);
+  bossSigns.push({
+    x,
+    y,
+    vx: Math.cos(driftAngle) * speed,
+    vy: Math.sin(driftAngle) * speed,
+    type: isPositive ? "plus" : "minus",
+    life: random(4.8, 6.8),
+    spin: random(-2, 2)
+  });
+}
+
+function checkBossSignCollisions() {
+  if (!bossActive) return;
+
+  for (let i = bossSigns.length - 1; i >= 0; i -= 1) {
+    const sign = bossSigns[i];
+    const distance = Math.hypot(player.x - sign.x, player.y - sign.y);
+
+    if (distance < (PLAYER_SIZE + BOSS_SIGN_SIZE) / 2) {
+      if (sign.type === "plus") {
+        changePlayerLevel(1);
+        score += 90;
+        playTone(660, 0.1, "triangle", 0.05);
+        burst(sign.x, sign.y, "#36d982", 18);
+      } else {
+        changePlayerLevel(-1);
+        playTone(180, 0.12, "sawtooth", 0.04);
+        burst(sign.x, sign.y, "#fb5a5f", 12);
+      }
+
+      eatenThisLevel = 0;
+      bossSigns.splice(i, 1);
+      updateHud();
+    }
+  }
+}
+
+function endBossBattle() {
+  bossActive = false;
+  bossDefeated = true;
+  boss = null;
+  bossSigns = [];
+  bossMessageTimer = 2.2;
+  bossStatus.classList.remove("show");
+  score += 500;
+  playTone(920, 0.22, "square", 0.05);
+  burst(WORLD.width / 2, WORLD.height / 2, "#b576ff", 48);
+  updateHud();
+}
+
 function burst(x, y, color, count = 16) {
   for (let i = 0; i < count; i += 1) {
     const angle = Math.random() * Math.PI * 2;
@@ -232,8 +481,11 @@ function draw() {
   ctx.clearRect(0, 0, WORLD.width, WORLD.height);
   drawGrid();
   particles.forEach(drawParticle);
+  if (bossActive && boss) drawBoss();
+  bossSigns.forEach(drawBossSign);
   cubes.forEach(drawCube);
   drawPlayer();
+  drawBossMessage();
 }
 
 function drawGrid() {
@@ -298,6 +550,74 @@ function drawPlayer() {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(player.level, player.x, player.y + 1);
+  ctx.restore();
+}
+
+function drawBoss() {
+  const pulse = 1 + Math.sin(boss.pulse) * 0.06;
+  const size = boss.size * pulse;
+  const x = boss.x - size / 2;
+  const y = boss.y - size / 2;
+
+  ctx.save();
+  ctx.translate(boss.x, boss.y);
+  ctx.rotate(Math.sin(boss.pulse * 0.55) * 0.12);
+  ctx.shadowColor = "#b576ff";
+  ctx.shadowBlur = 30;
+  ctx.fillStyle = "#7e3ff2";
+  ctx.fillRect(-size / 2, -size / 2, size, size);
+  ctx.strokeStyle = "#f3ddff";
+  ctx.lineWidth = 4;
+  ctx.strokeRect(-size / 2 + 5, -size / 2 + 5, size - 10, size - 10);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "#f7ecff";
+  ctx.font = "900 26px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("BOSS", 0, -3);
+  ctx.font = "800 15px system-ui, sans-serif";
+  ctx.fillText("LV 25", 0, 23);
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(181, 118, 255, 0.28)";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(x - 10, y - 10, size + 20, size + 20);
+  ctx.restore();
+}
+
+function drawBossSign(sign) {
+  const color = sign.type === "plus" ? "#36d982" : "#fb5a5f";
+  const symbol = sign.type === "plus" ? "+" : "-";
+
+  ctx.save();
+  ctx.translate(sign.x, sign.y);
+  ctx.rotate(sign.spin * (elapsed % 10));
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 14;
+  ctx.fillStyle = color;
+  ctx.fillRect(-BOSS_SIGN_SIZE / 2, -BOSS_SIGN_SIZE / 2, BOSS_SIGN_SIZE, BOSS_SIGN_SIZE);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = sign.type === "plus" ? "#06140d" : "#fff7f7";
+  ctx.font = "900 27px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(symbol, 0, sign.type === "plus" ? 0 : -2);
+  ctx.restore();
+}
+
+function drawBossMessage() {
+  if (bossMessageTimer <= 0) return;
+
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, bossMessageTimer);
+  ctx.fillStyle = "#f7ecff";
+  ctx.font = "900 44px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.shadowColor = "#b576ff";
+  ctx.shadowBlur = 22;
+  ctx.fillText("Boss Defeated!", WORLD.width / 2, WORLD.height * 0.22);
   ctx.restore();
 }
 
@@ -370,6 +690,8 @@ window.addEventListener("keyup", (event) => {
 
 startButton.addEventListener("click", startGame);
 restartButton.addEventListener("click", startGame);
+muteButton.addEventListener("click", toggleMute);
 
+renderHighScores();
 resetGame();
 draw();

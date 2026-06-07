@@ -27,28 +27,42 @@
           <strong id="progressText">0 / 5</strong>
         </div>
       </div>
+      <button class="mute-button" id="muteButton" type="button" aria-pressed="false">Mute</button>
     </section>
 
-    <section class="game-wrap">
-      <canvas id="gameCanvas" width="960" height="620" aria-label="Snake Dash game area"></canvas>
+    <section class="play-layout">
+      <section class="game-wrap">
+        <canvas id="gameCanvas" width="960" height="620" aria-label="Snake Dash game area"></canvas>
 
-      <div class="overlay show" id="startScreen">
-        <div class="panel">
-          <p class="eyebrow">Fast cube arcade</p>
-          <h2>Eat safe cubes. Dodge stronger ones.</h2>
-          <p>Move with WASD or arrow keys. Green and yellow cubes are edible. Red cubes end the run.</p>
-          <button id="startButton" type="button">Start Game</button>
-        </div>
-      </div>
+        <div class="boss-status" id="bossStatus" aria-live="polite">Boss Battle Active</div>
 
-      <div class="overlay" id="gameOverScreen">
-        <div class="panel">
-          <p class="eyebrow">Game over</p>
-          <h2 id="finalScoreText">Score 0</h2>
-          <p id="finalLevelText">You reached Level 1.</p>
-          <button id="restartButton" type="button">Restart</button>
+        <div class="overlay show" id="startScreen">
+          <div class="panel">
+            <p class="eyebrow">Fast cube arcade</p>
+            <h2>Eat safe cubes. Dodge stronger ones.</h2>
+            <p>Move with WASD or arrow keys. Green and yellow cubes are edible. Red cubes end the run. At Level 15, beat the boss by collecting plus signs until Level 25.</p>
+            <button id="startButton" type="button">Start Game</button>
+          </div>
         </div>
-      </div>
+
+        <div class="overlay" id="gameOverScreen">
+          <div class="panel">
+            <p class="eyebrow">Game over</p>
+            <h2 id="finalScoreText">Score 0</h2>
+            <p id="finalLevelText">You reached Level 1.</p>
+            <button id="restartButton" type="button">Restart</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="scores-panel" aria-label="Top high scores">
+        <h2>Top 3</h2>
+        <ol id="highScoreList">
+          <li>0</li>
+          <li>0</li>
+          <li>0</li>
+        </ol>
+      </aside>
     </section>
 
     <section class="legend" aria-label="Cube difficulty legend">

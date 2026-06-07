@@ -10,6 +10,7 @@
   --yellow: #f8cf4b;
   --red: #fb5a5f;
   --blue: #6bb8ff;
+  --violet: #b576ff;
 }
 
 * {
@@ -64,6 +65,13 @@ button:hover {
   justify-content: space-between;
 }
 
+.mute-button {
+  background: var(--panel-strong);
+  border: 1px solid var(--line);
+  color: var(--text);
+  min-width: 92px;
+}
+
 .brand {
   align-items: center;
   display: flex;
@@ -115,6 +123,13 @@ h1 {
   line-height: 1;
 }
 
+.play-layout {
+  align-items: stretch;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) 190px;
+}
+
 .game-wrap {
   aspect-ratio: 960 / 620;
   background: #0d1117;
@@ -124,6 +139,56 @@ h1 {
   min-height: 320px;
   overflow: hidden;
   position: relative;
+}
+
+.scores-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.scores-panel h2 {
+  font-size: 1rem;
+  margin: 0 0 14px;
+  text-transform: uppercase;
+}
+
+.scores-panel ol {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 24px;
+}
+
+.scores-panel li {
+  background: var(--panel-strong);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 1.1rem;
+  font-weight: 800;
+  padding: 12px;
+}
+
+.boss-status {
+  background: rgba(181, 118, 255, 0.16);
+  border: 1px solid rgba(181, 118, 255, 0.7);
+  border-radius: 8px;
+  color: #f4e9ff;
+  display: none;
+  font-size: 0.85rem;
+  font-weight: 800;
+  left: 16px;
+  padding: 9px 12px;
+  position: absolute;
+  text-transform: uppercase;
+  top: 16px;
+  z-index: 2;
+}
+
+.boss-status.show {
+  display: block;
 }
 
 canvas {
@@ -215,6 +280,10 @@ canvas {
   .hud {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .play-layout {
+    grid-template-columns: 1fr;
   }
 
   .stats {
