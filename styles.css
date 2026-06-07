@@ -244,6 +244,10 @@ canvas {
   margin: 0 0 22px;
 }
 
+.pause-panel p {
+  margin-bottom: 0;
+}
+
 .legend {
   color: var(--muted);
   font-size: 0.9rem;

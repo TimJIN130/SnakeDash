@@ -5,6 +5,7 @@ Snake Dash is a fast browser arcade game where you control a moving cube, eat we
 ## How to Play
 
 - Move with the arrow keys or WASD.
+- Press Space to pause or resume during a run.
 - Eat cubes with a level less than or equal to your current level.
 - Avoid cubes with a higher level than you.
 - Eating cubes increases your score and progress toward the next level.

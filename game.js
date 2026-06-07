@@ -13,6 +13,12 @@ const restartButton = document.getElementById("restartButton");
 const muteButton = document.getElementById("muteButton");
 const highScoreList = document.getElementById("highScoreList");
 const bossStatus = document.getElementById("bossStatus");
+const pauseScreen = document.getElementById("pauseScreen");
+
+const bossImage = typeof Image !== "undefined" ? new Image() : null;
+if (bossImage) {
+  bossImage.src = "assets/boss.png";
+}
 
 const WORLD = { width: canvas.width, height: canvas.height };
 const PLAYER_SIZE = 34;
@@ -44,6 +50,7 @@ let bossMessageTimer;
 let lastFrame;
 let running = false;
 let gameOver = false;
+let paused = false;
 let bossActive = false;
 let bossDefeated = false;
 
@@ -68,9 +75,11 @@ function resetGame() {
   bossMessageTimer = 0;
   lastFrame = performance.now();
   gameOver = false;
+  paused = false;
   bossActive = false;
   bossDefeated = false;
   bossStatus.classList.remove("show");
+  pauseScreen.classList.remove("show");
   updateHud();
 
   for (let i = 0; i < 14; i += 1) {
@@ -83,7 +92,9 @@ function startGame() {
   startBackgroundMusic();
   resetGame();
   running = true;
+  paused = false;
   startScreen.classList.remove("show");
+  pauseScreen.classList.remove("show");
   gameOverScreen.classList.remove("show");
   requestAnimationFrame(loop);
 }
@@ -91,7 +102,9 @@ function startGame() {
 function endGame() {
   running = false;
   gameOver = true;
+  paused = false;
   bossStatus.classList.remove("show");
+  pauseScreen.classList.remove("show");
   stopBackgroundMusic();
   saveHighScores(score);
   renderHighScores();
@@ -105,6 +118,12 @@ function endGame() {
 function loop(now) {
   if (!running) return;
 
+  if (paused) {
+    lastFrame = now;
+    requestAnimationFrame(loop);
+    return;
+  }
+
   const dt = Math.min((now - lastFrame) / 1000, 0.033);
   lastFrame = now;
   elapsed += dt;
@@ -113,6 +132,20 @@ function loop(now) {
   update(dt);
   draw();
   requestAnimationFrame(loop);
+}
+
+function togglePause() {
+  if (!running || gameOver) return;
+
+  paused = !paused;
+  pauseScreen.classList.toggle("show", paused);
+
+  if (paused) {
+    stopBackgroundMusic();
+  } else {
+    startBackgroundMusic();
+    lastFrame = performance.now();
+  }
 }
 
 function update(dt) {
@@ -564,19 +597,20 @@ function drawBoss() {
   ctx.rotate(Math.sin(boss.pulse * 0.55) * 0.12);
   ctx.shadowColor = "#b576ff";
   ctx.shadowBlur = 30;
-  ctx.fillStyle = "#7e3ff2";
+  ctx.fillStyle = "#11141d";
   ctx.fillRect(-size / 2, -size / 2, size, size);
+
+  if (bossImage && bossImage.complete) {
+    ctx.drawImage(bossImage, -size / 2, -size / 2, size, size);
+  } else {
+    ctx.fillStyle = "#7e3ff2";
+    ctx.fillRect(-size / 2, -size / 2, size, size);
+  }
+
   ctx.strokeStyle = "#f3ddff";
-  ctx.lineWidth = 4;
-  ctx.strokeRect(-size / 2 + 5, -size / 2 + 5, size - 10, size - 10);
+  ctx.lineWidth = 5;
+  ctx.strokeRect(-size / 2, -size / 2, size, size);
   ctx.shadowBlur = 0;
-  ctx.fillStyle = "#f7ecff";
-  ctx.font = "900 26px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("BOSS", 0, -3);
-  ctx.font = "800 15px system-ui, sans-serif";
-  ctx.fillText("LV 25", 0, 23);
   ctx.restore();
 
   ctx.save();
@@ -678,9 +712,13 @@ window.addEventListener("keydown", (event) => {
     keys.add(event.code);
   }
 
-  if (event.code === "Space" && (!running || gameOver)) {
+  if (event.code === "Space") {
     event.preventDefault();
-    startGame();
+    if (running && !gameOver) {
+      togglePause();
+    } else {
+      startGame();
+    }
   }
 });
 
